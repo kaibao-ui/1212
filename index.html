@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ITS AI A卷模擬試題 - 模擬測驗與解析</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-border: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --success: #22c55e;
+      --error: #ef4444;
+      --warning: #f59e0b;
+    }
+
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; line-height: 1.6; }
+    .container { max-width: 860px; margin: 0 auto; }
+    
+    header { text-align: center; margin-bottom: 30px; border-bottom: 1px solid var(--panel-border); padding-bottom: 20px; }
+    h1 { color: var(--primary); margin-bottom: 8px; font-size: 1.8rem; }
+    p.subtitle { color: var(--muted); margin: 0; font-size: 0.95rem; }
+
+    .score-board {
+      display: none;
+      background: var(--panel);
+      border: 2px solid var(--primary);
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 30px;
+      box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.2);
+    }
+    .score-board h2 { margin-top: 0; color: var(--primary); }
+    .score-number { font-size: 3rem; font-weight: 800; color: var(--success); margin: 10px 0; }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      transition: border-color 0.2s;
+    }
+    .q-number { font-weight: bold; color: var(--primary); font-size: 1.1rem; margin-bottom: 10px; }
+    .q-text { font-size: 1rem; margin-bottom: 15px; white-space: pre-line; }
+
+    .options { display: flex; flex-direction: column; gap: 10px; }
+    .option-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 12px 15px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .option-label:hover { background: rgba(56, 189, 248, 0.1); border-color: var(--primary); }
+    .option-label input { margin-top: 4px; }
+
+    .explanation {
+      display: none;
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 6px;
+      background: rgba(15, 23, 42, 0.6);
+      border-left: 4px solid var(--primary);
+      font-size: 0.92rem;
+    }
+    .explanation.correct { border-left-color: var(--success); }
+    .explanation.incorrect { border-left-color: var(--error); }
+    .exp-title { font-weight: bold; margin-bottom: 5px; }
+
+    .submit-btn {
+      display: block;
+      width: 100%;
+      padding: 16px;
+      background: var(--primary);
+      color: #0f172a;
+      font-size: 1.1rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 30px;
+      transition: background 0.2s;
+    }
+    .submit-btn:hover { background: var(--primary-hover); color: white; }
+
+    /* Result styles */
+    .correct-ans { color: var(--success); font-weight: bold; }
+    .wrong-ans { color: var(--error); font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>ITS AI 認證 - A卷模擬測驗</h1>
+    <p class="subtitle">共 50 題 | 題題附帶詳細解析 | 點擊下方按鈕交卷並查看分數</p>
+  </header>
+
+  <div id="scoreBoard" class="score-board">
+    <h2>測驗完成！</h2>
+    <p>你的得分為：</p>
+    <div id="scoreText" class="score-number">0 / 100</div>
+    <p id="scoreSummary"></p>
+  </div>
+
+  <form id="quizForm">
+    <div id="questionsContainer"></div>
+    <button type="button" class="submit-btn" onclick="submitQuiz()">提交考卷並查看分數與解析</button>
+  </form>
+</div>
+
+<script>
+const quizData = [
+  {
+    id: 1,
+    q: "下列哪個應用程式實作時並未使用 AI?",
+    type: "single",
+    options: [
+      "A. 電子郵件自動完成功能",
+      "B. 預測型瀏覽器搜尋列",
+      "C. 傳訊平台的文字轉表情圖示程式",
+      "D. 電子郵件垃圾郵件篩選器"
+    ],
+    ans: ["C"],
+    exp: "【正確答案：C】\n文字轉表情圖示（Text-to-Emoji）通常只是傳統的字串比對或規則基底對照表（例如將 ':)' 轉成 😊），不需要 AI 模型；而自動完成、搜尋預測與垃圾郵件過濾皆使用了機器學習與自然語言處理（NLP）技術。"
+  },
+  {
+    id: 2,
+    q: "一間汽車經銷公司想根據先前的銷售資料，使用 AI 預測任何指定日期的來客數，以便運用這項資料制定每週計畫。\n對這間經銷公司而言，最重要的 AI 模型成功指標是什麼?",
+    type: "single",
+    options: [
+      "A. 產生的預測結果可協助經銷公司管理庫存及安排值班員工，進而增加獲利。",
+      "B. 每天的預測結果差異越小越好。",
+      "C. 模型能夠有效率地即時執行。",
+      "D. 模型可以每週更新。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n商業 AI 專案最關鍵的成功指標是「能否達成業務目標與產生價值（如增加獲利、優化營運與人力安排）」，而不單純只是技術層面的執行速度或更新頻率。"
+  },
+  {
+    id: 3,
+    q: "一間保險公司會根據客戶對於 10 個是非題的答案判斷他們是否符合折扣資格；公司的 CEO 想要制定一項用於判斷客戶優惠資格的計畫，代替保險代理人詢問這些問題。這項計畫必須盡可能達到快速可靠的成效，CEO 詢問針對這種情況，您會推薦使用哪種 AI。\n請問您該如何回答這位 CEO?",
+    type: "single",
+    options: [
+      "A. 在這種情況下，AI 並非效率最高的解決方案，因為這個問題只需使用少數決策陳述式就能處理妥當。",
+      "B. 叢集演算法能將答案類似的客戶分入同一折扣群組，因此是最佳解決方案。",
+      "C. 神經網路能根據客戶對問題的答案學會預測對方的保險折扣獲取資格，因此是最佳解決方案。",
+      "D. 由於所有折扣類別都已經有充足的代表性訓練資料，因此無論使用哪種機器學習演算法，都能快速學會正確的折扣類別。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n並非所有問題都需要 AI。針對僅有 10 個是非題且規則明確的情境，使用傳統的程式條件判斷（If-Else 決策陳述式）開發最快、成本最低且最可靠。"
+  },
+  {
+    id: 4,
+    q: "哪種人工智慧演算法或應用程式會使用未標記資料?",
+    type: "single",
+    options: [
+      "A. 叢集 (Clustering)",
+      "B. 物件偵測",
+      "C. 分類",
+      "D. 機器翻譯"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n叢集（Clustering）屬於非監督式學習（Unsupervised Learning），專門用來處理未標記（Unlabeled）的資料；物件偵測、分類與機器翻譯通常需要有標記的訓練資料。"
+  },
+  {
+    id: 5,
+    q: "一間銀行希望能偵測出詐騙交易。這間銀行能夠收集每筆交易的資料，例如金額、購買的品項。\n請問這屬於哪種機器學習問題?",
+    type: "single",
+    options: [
+      "A. 監督式學習、分類",
+      "B. 增強式學習、遊戲",
+      "C. 監督式學習、迴歸",
+      "D. 非監督式學習、叢集"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n偵測詐騙交易是預測結果為「是詐騙 (1)」或「非詐騙 (0)」的二元類別，屬於「監督式學習中的分類（Classification）」問題。"
+  },
+  {
+    id: 6,
+    q: "您和團隊成員在開發一款能在電動遊戲中作為對手的產品。團隊根據獎勵使用演算法，也就是假如產品表現越佳，成果品質越優異。\n請問這屬於哪一種機器學習?",
+    type: "single",
+    options: [
+      "A. 增強式學習 (Reinforcement Learning)",
+      "B. 監督式學習",
+      "C. 半監督式學習",
+      "D. 非監督式學習"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n透過與環境互動並根據「獎勵（Reward）」與「懲罰」來優化策略的演算法，即為增強式學習（Reinforcement Learning），常應用於遊戲對手開發。"
+  },
+  {
+    id: 7,
+    q: "為什麼 AI 專案團隊裡必須有不具備技術專業知識的領域專家?",
+    type: "single",
+    options: [
+      "A. 為了將特定領域資料加入演算法，使 AI 系統客觀有效率。",
+      "B. 為了整理和清除自訂 AI 解決方案中的結構化及非結構化資料。",
+      "C. 為了評估將 AI 整合至現有應用程式的工具。",
+      "D. 為了訓練他們的應用 AI 與資料工程的技能。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n領域專家（Domain Expert）能提供業務知識與情境脈絡，確保輸入模型的資料與特徵符合實際應用情境，避免模型偏差。"
+  },
+  {
+    id: 8,
+    q: "一間動物醫院聘請您擔任專案經理，他們想使用機器學習技術預測透過 X 光找到的貓狗腫瘤中，有哪些特徵能為不同患者進行最準確的風險分類。您可以取得過去 10 年所有醫療記錄（包含造影圖像）。\n請問您會選擇讓下列哪兩位人員加入團隊?（請選擇 2 個答案）",
+    type: "multiple",
+    options: [
+      "A. 善於在掃描圖像中辨識出腫瘤的動物放射醫療專家。",
+      "B. 從事過影像分類工作的 AI 開發人員。",
+      "C. 擅長照顧病弱寵物的當地寵物旅館店主。",
+      "D. 經常在手術室和化療門診中協助進行寵物手術及照護的獸醫技師。",
+      "E. 為該醫院提供化療藥物的製藥公司銷售代表。",
+      "F. 負責採購及維護造影機械設備的醫院 CFO。"
+    ],
+    ans: ["A", "B"],
+    exp: "【正確答案：A, B】\n醫療影像分類專案需要「領域專家（動物放射醫療專家 A）」負責解讀與標註影像，以及「技術開發人員（影像分類 AI 開發者 B）」負責建置機器學習模型。"
+  },
+  {
+    id: 9,
+    q: "與您敵對或不懷好意的有心人士可能透過惡意探索哪方面的問題以攻擊或暗中破壞 AI 系統?",
+    type: "single",
+    options: [
+      "A. 資料擷取 (Data Extraction / Data Poisoning)",
+      "B. 過度擬合",
+      "C. 資料偏斜",
+      "D. 非監督式學習"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n惡意攻擊者常透過攻擊「資料擷取/資料投毒（Data Poisoning）」過程，注入有害或偏頗的訓練資料來破壞 AI 系統的判斷力。"
+  },
+  {
+    id: 10,
+    q: "貴組織正在針對特定用途開發一套 AI 系統，但這套系統也能輕易用於其他用途。\n請問具備多種潛在用途的系統為什麼會產生道德疑慮?",
+    type: "single",
+    options: [
+      "A. 因為可能遭人用於未經授權或惡意的用途。",
+      "B. 因為會導致系統更容易故障。",
+      "C. 因為可能會開拓新市場商機。",
+      "D. 因為其他組織可能會想購買這套 AI 系統。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n雙重用途（Dual-use）的 AI 系統可能被濫用於監視、偽造或未經授權的侵犯隱私行為，進而引發倫理規範疑慮。"
+  },
+  {
+    id: 11,
+    q: "數間公司共同建立並監視一個特定產業的 AI 相關安全性事件資料庫，希望藉由共享資訊，讓業界部署的 AI 系統更安全。\n請問哪一位專案團隊成員應負責監視 AI 事件資料庫中的事件?",
+    type: "single",
+    options: [
+      "A. 負責評估團隊開發中新功能的產品經理。",
+      "B. 負責評估成本超支和時程延遲的專案經理。",
+      "C. 根據要求編寫高效簡潔程式碼的開發人員。",
+      "D. 負責改良產品軟體外觀及風格的 UI 設計師。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n產品經理（Product Manager）負責產品的功能規劃、安全性評估與風險控管，應持續追蹤業界安全性事件以優化產品機制。"
+  },
+  {
+    id: 12,
+    q: "一間公司提供使用者非常多種類的產品；他們想將產品整理成不同組別，以便針對每組產品分別制定行銷策略。\n請問這屬於哪種機器學習問題?",
+    type: "single",
+    options: [
+      "A. 監督式學習、叢集",
+      "B. 監督式學習、迴歸",
+      "C. 非監督式學習、分類",
+      "D. 非監督式學習、叢集"
+    ],
+    ans: ["D"],
+    exp: "【正確答案：D】\n在沒有預先設定標籤的情況下，將產品自動依相似性群聚分組，屬於「非監督式學習中的叢集（Clustering）」問題。"
+  },
+  {
+    id: 13,
+    q: "一位學校諮商師想瞭解招生嚴格的明星大學主要的錄取標準，他應該使用哪種資料才能訓練出成效最佳的機器學習模型?",
+    type: "single",
+    options: [
+      "A. 盡可能收集多個地點的各間學校在過去幾年的資料。",
+      "B. 對自家學校收集盡可能久遠的資料。",
+      "C. 對該學校所在的城市收集盡可能久遠的資料。",
+      "D. 收集該學校過去十年的資料。"
+    ],
+    ans: ["D"],
+    exp: "【正確答案：D】\n為了準確分析「特定明星大學」的錄取標準，訓練資料應集中於該特定目標學校近期的歷史申請與錄取數據（時間範圍適中且專一）。"
+  },
+  {
+    id: 14,
+    q: "您的團隊正在打造一個農業機器人，會使用視覺系統辨識雜草，然後清除雜草。您的任務是為這項專案開發一個訓練資料集。\n請問這個訓練集中應加入哪些圖像?為什麼?",
+    type: "single",
+    options: [
+      "A. 雜草和作物的圖像，這樣系統才能學習如何分辨可能看到的兩種植物類別。",
+      "B. 各式類型的圖像，這樣機器人才能在各種不同環境中進行一般物件辨識。",
+      "C. 只需加入雜草的圖像，這樣系統便能建立專為辨識雜草而調整的健全辨識模型。",
+      "D. 在農場上能看到的所有物件的圖像，包含工具、家畜、作物等。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n模型必須同時學會「目標（雜草）」與「需保護物（作物）」的特徵，才能精確區分並避免誤傷作物。"
+  },
+  {
+    id: 15,
+    q: "您正在為有特定目標的模型選擇資料集。在選擇有助於達成目標的資料集時，下列哪兩項因素可能是重要的元素?（請選擇 2 個答案）",
+    type: "multiple",
+    options: [
+      "A. 確認資料集的資料量足以達成目的。",
+      "B. 缺少的元素或者有毀損的元素（資料品質/完整性）。",
+      "C. 資料集元素的檔案格式，例如圖片。",
+      "D. 資料集的發佈來源為學術實體還是商業實體。",
+      "E. 資料集是否是透過資料集搜尋引擎找到的。"
+    ],
+    ans: ["A", "B"],
+    exp: "【正確答案：A, B】\n資料集的「資料量（Data Volume）」與「資料品質/缺失狀況（Data Quality & Completeness）」是決定機器學習模型成敗最重要的核心因素。"
+  },
+  {
+    id: 16,
+    q: "您正在建置一個預測垃圾郵件的模型。資料集中『是垃圾郵件』欄位包含：『否』6筆，『是』1筆。\n請問在此資料集中，有什麼問題是您必須解決的?",
+    type: "single",
+    options: [
+      "A. 資料毀損",
+      "B. 資料不平衡 (Class Imbalance)",
+      "C. 資料缺失",
+      "D. 極端值"
+    ],
+    ans: ["B"],
+    exp: "【正確答案：B】\n資料中「否（正常郵件）」佔絕大多數，而「是（垃圾郵件）」比例極少，這屬於典型的「資料類別不平衡（Class Imbalance）」問題。"
+  },
+  {
+    id: 17,
+    q: "一間公司開發一款可回報路面坑洞的 APP。因城裡許多老年人和低收入居民都沒有智慧型手機，導致資料集產生偏差，僅有富裕社區受益。\n請問這是哪種偏差類型的例子?",
+    type: "single",
+    options: [
+      "A. 自動化偏差",
+      "B. 資料收集偏差 (Data Collection Bias / Sampling Bias)",
+      "C. 人類認知偏差",
+      "D. 增強式偏差"
+    ],
+    ans: ["B"],
+    exp: "【正確答案：B】\n由於採樣工具（智慧型手機）普及度的差異，導致收集到的資料無法代表整體母體，此為「資料收集偏差/採樣偏差」。"
+  },
+  {
+    id: 18,
+    q: "配對題：請識別『本機伺服器』與『雲端儲存空間』的特徵配對。",
+    type: "single",
+    options: [
+      "A. 雲端：費用隨空間變動/無須額外維護費；本機：包含硬體安裝維護費/無網際網路亦可存取",
+      "B. 本機：費用隨空間變動；雲端：包含硬體安裝維護費",
+      "C. 雲端：無網際網路亦可存取；本機：無須維護費",
+      "D. 以上皆非"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n• 本機伺服器：包含硬體安裝與維護費用、無網路連線時仍可存取資料。\n• 雲端儲存空間：費用依使用空間彈性計費、免去硬體設備維護與升級費用。"
+  },
+  {
+    id: 19,
+    q: "您想將視覺資訊編碼成機器視覺系統能夠解譯的形式，但記憶體需求和模型大小都有限制。在相同的解析度下，下列哪種圖像資料所需的磁碟使用量最小?",
+    type: "single",
+    options: [
+      "A. 單色 (Monochrome / Binary)",
+      "B. 灰階 (Grayscale)",
+      "C. 256色",
+      "D. 高動態範圍 (HDR)"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n單色（Binary / Monochrome）圖像每個像素僅需 1 位元（Bit）來表示黑或白，資料量與磁碟佔用空間為所有選項中最小。"
+  },
+  {
+    id: 20,
+    q: "配對題：AI問題對應資料類型：1.股票價格預測、2.投票模式、3.情感分析、4.物件辨識。",
+    type: "single",
+    options: [
+      "A. 1-時間序列, 2-表格式, 3-文字, 4-圖像",
+      "B. 1-表格式, 2-時間序列, 3-圖像, 4-文字",
+      "C. 1-文字, 2-圖像, 3-時間序列, 4-表格式",
+      "D. 1-時間序列, 2-文字, 3-表格式, 4-圖像"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n• 股票價格預測：時間序列資料（Time Series）\n• 投票模式：表格式資料（Tabular）\n• 電子郵件情感分析：文字資料（Text）\n• 物件辨識：圖像資料（Image）"
+  },
+  {
+    id: 21,
+    q: "您正在建置一個 AI 預測是否核准貸款申請，資料包含許多特徵，一開始想使用最有價值的特徵來提升成功率。請問您該怎麼做?",
+    type: "single",
+    options: [
+      "A. 與負責人工核准貸款的人員討論，詢問他們該考慮哪些因素。",
+      "B. 只保留描述客戶私人情況的特徵。",
+      "C. 詢問客戶他們認為自己最大的優勢是什麼。",
+      "D. 只保留數字特徵，因為 AI 只會處理數字。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n與領域專家（負責審核貸款的人員）諮詢，是進行「特徵選擇（Feature Selection）」最有效且符合業務邏輯的做法。"
+  },
+  {
+    id: 22,
+    q: "資料科學家欲預測客戶投資金額。資料包含：客戶_ID、年齡、城市（全為紐約市）、學歷、出生年、薪資。在特徵選擇階段應移除哪兩欄資料?（請選擇 2 個答案）",
+    type: "multiple",
+    options: [
+      "A. 『城市』，因為這一欄僅包含單一值（無變異性）。",
+      "B. 『年齡』，因為使用『出生年』欄的值即可推算出這欄的值（資訊共線性/重複）。",
+      "C. 『學歷』，因為這一欄包含類別值。",
+      "D. 『城市』，因為居住地點不影響投資金額。",
+      "E. 『薪資』，因為數值較大。"
+    ],
+    ans: ["A", "B"],
+    exp: "【正確答案：A, B】\n1. 『城市』數值皆為紐約市，缺乏變異性，無法提供模型判斷資訊；\n2. 『年齡』與『出生年』存在強烈冗餘關係，保留其一即可。"
+  },
+  {
+    id: 23,
+    q: "預測患者約診未到診問題（標籤為『是』/『否』）。在進行特徵工程（Feature Engineering）時，可能執行下列哪兩種作業?（請選擇 2 個答案）",
+    type: "multiple",
+    options: [
+      "A. 將『是』與『否』編碼為數值 (例如 1 與 0)。",
+      "B. 將病症等類別資料編碼為數值 (例如 One-Hot Encoding)。",
+      "C. 選取最佳分類演算法。",
+      "D. 評估隱私權需求。",
+      "E. 對 AI 演算法進行超參數調整。"
+    ],
+    ans: ["A", "B"],
+    exp: "【正確答案：A, B】\n將文字類別資料（如 是/否、病症類別）編碼轉換為模型能計算的數字格式，屬於典型的「特徵工程（Feature Engineering）」範疇。"
+  },
+  {
+    id: 24,
+    q: "辨識類別特徵編碼方法：\n表格A (學歷: 1, 2, 3...)\n表格B (學歷_1:1,0,0; 學歷_2:0,1,0; 學歷_3:0,0,1)\n表格C (學歷_1, 學歷_2 為 k-1 欄位)\n請問哪種代表標籤編碼、獨熱編碼、虛擬編碼?",
+    type: "single",
+    options: [
+      "A. 表格A: 標籤編碼 (Label Encoding); 表格B: 一位有效編碼 (One-Hot); 表格C: 虛擬編碼 (Dummy Encoding)",
+      "B. 表格A: One-Hot; 表格B: Label; 表格C: Dummy",
+      "C. 表格A: Dummy; 表格B: One-Hot; 表格C: Label",
+      "D. 以上皆非"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n• 表格 A 為整數數字替代，為 Label Encoding。\n• 表格 B 拆解為 N 個 0/1 獨立欄位，為 One-Hot Encoding。\n• 表格 C 拆解為 N-1 個欄位以避免多重共線性，為 Dummy Encoding。"
+  },
+  {
+    id: 25,
+    q: "擁有 10 萬張北極圈衛星圖像（已標籤），欲區分冰層、水域、土地。請問該如何配置訓練和測試資料集?",
+    type: "single",
+    options: [
+      "A. 將大約 80% 的圖像用於訓練，剩下的 20% 用於測試。",
+      "B. 將 50% 用於訓練，50% 用於測試。",
+      "C. 將 100% 資料同時用於訓練與測試。",
+      "D. 使用所有資料訓練，再挑一部分測試。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n機器學習標準做法通常將資料切分為 80/20（或 70/30、80/10/10）進行訓練與測試，且訓練集與測試集必須嚴格分離。"
+  },
+  {
+    id: 26,
+    q: "您需要為醫療技術人員建立一套『容易解釋（Highly Interpretable）』的導引系統。請問應該使用哪種模型?",
+    type: "single",
+    options: [
+      "A. 決策樹 (Decision Tree)",
+      "B. 支援向量機 (SVM)",
+      "C. 神經網路 (Neural Network)",
+      "D. K-Means 叢集"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n決策樹（Decision Tree）具備樹狀規則路徑，可解釋性極高，非技術人員也能輕易理解決策邏輯。"
+  },
+  {
+    id: 27,
+    q: "下列哪兩種問題可以使用決策樹演算法解決?（請選擇 2 個答案）",
+    type: "multiple",
+    options: [
+      "A. 分類 (Classification)",
+      "B. 迴歸 (Regression)",
+      "C. 叢集",
+      "D. 增強式學習",
+      "E. 文字產生"
+    ],
+    ans: ["A", "B"],
+    exp: "【正確答案：A, B】\n決策樹可以用於處理離散標籤的「分類」問題，亦可用於連續數值預測的「迴歸」問題（Classification & Regression Trees, CART）。"
+  },
+  {
+    id: 28,
+    q: "請配對 AI 建模步驟與對應的資料集片段：\n1. 訓練和建模\n2. 在新實例上評估模型\n3. 調整超參數",
+    type: "single",
+    options: [
+      "A. 1-訓練資料集, 2-測試資料集, 3-驗證資料集",
+      "B. 1-測試資料集, 2-訓練資料集, 3-驗證資料集",
+      "C. 1-驗證資料集, 2-測試資料集, 3-訓練資料集",
+      "D. 1-訓練資料集, 2-驗證資料集, 3-測試資料集"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n• 訓練資料集（Training Set）：用於模型學習與參數擬合。\n• 驗證資料集（Validation Set）：用於超參數調整與模型選擇。\n• 測試資料集（Test Set）：用於評估模型對未見資料的泛化能力。"
+  },
+  {
+    id: 29,
+    q: "決策樹如何訓練分類模型?",
+    type: "single",
+    options: [
+      "A. 在自變數和應變數之間找出線性關係。",
+      "B. 決策樹會使用特徵將資料集區分為兩個以上各自具備相似特徵的群組。",
+      "C. 找出一或多條超平面線切割。",
+      "D. 計算資料點之間的距離。"
+    ],
+    ans: ["B"],
+    exp: "【正確答案：B】\n決策樹會根據特徵（Feature）設定節點條件，逐步將資料集分割為具備較高同質性（相似特徵）的子群組。"
+  },
+  {
+    id: 30,
+    q: "區分成人與兒童的兩個模型混淆矩陣：\n模型1：準確率 60% (預測正確：成人3, 兒童3)\n模型2：準確率 80% (預測正確：成人0, 兒童8)\n哪個 AI 較佳? 為什麼?",
+    type: "single",
+    options: [
+      "A. 模型 1 較佳，因為正確預測成人和兒童的數值均衡。",
+      "B. 模型 1 較佳，因為正確預測兒童數最高。",
+      "C. 模型 1 較佳，其準確率為 60%。",
+      "D. 模型 2 較佳，因為其整體準確率（Accuracy）達 80%。"
+    ],
+    ans: ["D"],
+    exp: "【正確答案：D】\n一般單純評估整體模型效能時，以整體準確率（Accuracy）最高的模型（模型 2 的 80%）為優選（除非有特別著重 recall/precision 的特定需求）。"
+  },
+  {
+    id: 31,
+    q: "擬合曲線圖判斷：\n1. 數據點高低起伏，擬合線幾乎是一條平直線\n2. 曲線適度通過並反應趨勢\n3. 曲線完全穿過每一個數據點\n請問哪個最佳、哪個過度擬合(Overfitting)、哪個低度擬合(Underfitting)?",
+    type: "single",
+    options: [
+      "A. 最佳：模型2；過度擬合：模型3；低度擬合：模型1",
+      "B. 最佳：模型1；過度擬合：模型2；低度擬合：模型3",
+      "C. 最佳：模型3；過度擬合：模型1；低度擬合：模型2",
+      "D. 最佳：模型2；過度擬合：模型1；低度擬合：模型3"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n• 模型 1 未能抓取資料趨勢，為『低度擬合（Underfitting）』。\n• 模型 2 抓住主要趨勢且具備泛化能力，為『最佳模型』。\n• 模型 3 完全穿過所有噪點，缺乏泛化能力，為『過度擬合（Overfitting）』。"
+  },
+  {
+    id: 32,
+    q: "圖表依性別與年份（2011-2014）顯示擁有銀行帳戶人口百分比的走勢。請問這屬於哪種視覺效果?",
+    type: "single",
+    options: [
+      "A. 交集",
+      "B. 長期變化 (Change Over Time / Trend)",
+      "C. 對比",
+      "D. 因素"
+    ],
+    ans: ["B"],
+    exp: "【正確答案：B】\n橫軸為時間（年份）的折線圖，主要用來呈現資料隨時間發生的「長期變化/趨勢」。"
+  },
+  {
+    id: 33,
+    q: "哪種指標經常用於評估『迴歸（Regression）』AI 的品質?",
+    type: "single",
+    options: [
+      "A. 均方根誤差 (RMSE)",
+      "B. 準確率 (Accuracy)",
+      "C. 召回率 (Recall)",
+      "D. 精確率 (Precision)"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n均方根誤差（RMSE）、平均絕對誤差（MAE）等是用於評估「迴歸」連續數值預測的指標；準確率、召回率、精確率則用於評估「分類」模型。"
+  },
+  {
+    id: 34,
+    q: "您需要對使用交易資料進行訓練的『詐騙偵測模型』進行成效評估。請問您應該使用哪一種工具/指標來完整觀察真陽性、偽陽性等結果?",
+    type: "single",
+    options: [
+      "A. 混淆矩陣 (Confusion Matrix)",
+      "B. 確判為真率",
+      "C. 準確率",
+      "D. BLEU"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n詐騙偵測屬於極端不平衡分類，單看準確率容易受騙；使用「混淆矩陣（Confusion Matrix）」能詳細分析 TP, FP, TN, FN，評估效果最好。"
+  },
+  {
+    id: 35,
+    q: "準確率（Accuracy）和精確率（Precision）有什麼差異?",
+    type: "single",
+    options: [
+      "A. 當資料集不平衡時，準確率比精確率更有用。",
+      "B. 準確率只能以 0 到 1 表示，精確率只能以百分比表示。",
+      "C. 準確率量測『所有預測正確的比例』；精確率量測『預測為正向的觀測資料中，實際為正向的比例』。",
+      "D. 準確率是指測量值與『真』值之間的差距；精確率是指測量值彼此之間的重複性差距。"
+    ],
+    ans: ["C"],
+    exp: "【正確答案：C】\nAccuracy 是全盤的整體正確率；Precision 則專注於「模型預測為正例的結果中，究竟有多少是真正的正例」。"
+  },
+  {
+    id: 36,
+    q: "如想避免決策樹發生過度擬合（Overfitting）的情形，可以採取哪些做法?",
+    type: "single",
+    options: [
+      "A. 指定樹深上限 (Max Depth)。",
+      "B. 決定葉節點數目下限。",
+      "C. 確認資料集呈現高度偏態。",
+      "D. 限制資料維度。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n限制決策樹的最大深度（Max Depth）或進行剪枝（Pruning），能有效防止樹生長得太過複雜而導致過度擬合。"
+  },
+  {
+    id: 37,
+    q: "學校入學 AI 模型的輸入排除申請人收入資料，但產生的結果依然偏向高收入學生。下列何者可能是造成這種情況的原因?",
+    type: "single",
+    options: [
+      "A. 其他特徵（例如郵遞區號、測驗分數）與收入水準相互關聯 (Proxy Variables)。",
+      "B. 訓練資料集太小。",
+      "C. 模型的程式碼有語法錯誤。",
+      "D. 特徵集太小導致過度擬合。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n即便刪除了敏感特徵（收入），其他特徵（如郵遞區號、私立學校背景）往往與收入高度相關，成為「代理變數（Proxy Variables）」，使偏見依然傳播。"
+  },
+  {
+    id: 38,
+    q: "一個 AI 團隊實作的模型出現過度擬合（Overfitting），請問可以採取哪三種方法解決問題?（請選擇 3 個答案）",
+    type: "multiple",
+    options: [
+      "A. 收集更多訓練資料。",
+      "B. 簡化模型或調整超參數 (例如加入正規化)。",
+      "C. 進行特徵選擇，減少不必要的特徵。",
+      "D. 實作一個更複雜的模型。",
+      "E. 改用非線性超複雜模型。"
+    ],
+    ans: ["A", "B", "C"],
+    exp: "【正確答案：A, B, C】\n解決過度擬合的方法包含：增加數據量 (A)、降低模型複雜度/調整超參數 (B)、以及減少特徵數量 (C)。"
+  },
+  {
+    id: 39,
+    q: "下列哪些物件可以協助 AI 專案團隊管理法規合規性（Regulatory Compliance）?",
+    type: "single",
+    options: [
+      "A. 資料分享合約、事件記錄檔、風險登錄表",
+      "B. 資料策略、問題記錄檔、專案計畫",
+      "C. 資料品質計分卡、安全性記錄檔、腳本",
+      "D. 資料模型、偵錯記錄檔、變更要求"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n資料分享合約（Data Sharing Agreements）、事件記錄檔（Event Logs）與風險登錄表（Risk Registers）是稽核合規性與責任歸屬的重要文件。"
+  },
+  {
+    id: 40,
+    q: "模型部署前欲詢問客戶印象與回饋，在這個流程中哪兩項是必要的工作?（請選擇 2 個答案）",
+    type: "multiple",
+    options: [
+      "A. 根據結果進行效能評定並告知客戶潛在風險。",
+      "B. 與客戶會面，共同評估解決方案。",
+      "C. 擴大所使用模型的規模。",
+      "D. 搜尋改良技術。",
+      "E. 與競爭對手比較。"
+    ],
+    ans: ["A", "B"],
+    exp: "【正確答案：A, B】\n與客戶攜手評估解決方案 (B) 並透明化揭露系統效能與潛在風險 (A)，是確保需求對齊與符合倫理要求的必要步驟。"
+  },
+  {
+    id: 41,
+    q: "您負責制定訓練計畫，協助辦公大樓保全人員瞭解如何使用臉部辨識軟體。請問訓練計畫應該包括哪些內容?",
+    type: "single",
+    options: [
+      "A. 接獲 AI 認錯人（誤判）的投訴時應採取的標準處理流程 (SOP)。",
+      "B. 介紹軟體中使用的最新深度神經網路數學原理。",
+      "C. 說明 AI 的技術演算法細節。",
+      "D. 介紹測試方法讓保全人員測試 AI 準確率。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n對第一線操作人員（保全）而言，重點在於實用流程：當 AI 發生辨識錯誤或爭議時，應如何介入與處置。"
+  },
+  {
+    id: 42,
+    q: "銀行使用 AI 決定是否核准貸款，客戶可能會對決策提出異議。請問銀行應該提供下列哪項資訊以減少未來發生的爭議並提升可解釋性?",
+    type: "single",
+    options: [
+      "A. 用於訓練 AI 的資料特徵與邏輯說明/決策依據。",
+      "B. 編寫預測程式碼的工程師名字。",
+      "C. 執行的實驗次數。",
+      "D. 生產環境中的預測總數。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n依據金融法規與 AI 可解釋性（XAI）原則，機構必須能說明「影響決策的核心關鍵因素與資料邏輯」。"
+  },
+  {
+    id: 43,
+    q: "下列哪個詞彙經常用於形容 AI 訓練完成後，輸入新數據『產生預測結果』的過程?",
+    type: "single",
+    options: [
+      "A. 推斷 (Inference)",
+      "B. 超參數調整 (Hyperparameter Tuning)",
+      "C. K 等分交叉驗證",
+      "D. 混淆矩陣"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n模型訓練完畢後，接收新資料並計算/輸出預測結果的階段稱為「推斷（Inference）」。"
+  },
+  {
+    id: 44,
+    q: "生產環境 AI 作業（MLOps）中，連續管線部署了下列哪兩種機制以維持營運?（請選擇 2 個答案）",
+    type: "multiple",
+    options: [
+      "A. 事件票證",
+      "B. 不可變基礎結構模式",
+      "C. AI 健康情況監視 (AI Health Monitoring)",
+      "D. 推斷調整",
+      "E. 特徵存放庫 (Feature Store)"
+    ],
+    ans: ["C", "E"],
+    exp: "【正確答案：C, E】\n「AI 健康情況監視（針對模型飄移進行監控）」與「特徵存放庫（Feature Store，統一管理與共享特徵）」是維持持續部署與營運的核心技術。"
+  },
+  {
+    id: 45,
+    q: "評估 AI 模型重新接受訓練（Retraining）的策略與頻率時，除了回饋意見與資料量外，還應納入哪項重要因素?",
+    type: "single",
+    options: [
+      "A. 在生產環境中模型效能的可見度",
+      "B. 資源成本 (Resource / Compute Costs)",
+      "C. 專案名稱",
+      "D. UI 設計風格"
+    ],
+    ans: ["B"],
+    exp: "【正確答案：B】\n重新訓練模型需要消耗大量的運算資源與時間成本，因此「資源與運算成本（Resource Costs）」是商業決策的重要考量。"
+  },
+  {
+    id: 46,
+    q: "您將訓練用於區分貓、狗、兔子的 AI 部署至生產環境。請問下列哪種情況是在生產環境發生『模型漂移（Model Drift / Concept Drift）』的例子?",
+    type: "single",
+    options: [
+      "A. 模型經常收到區分老虎和猴子的要求 (輸入資料分佈發生重大改變)。",
+      "B. 模型只用於區分貓和兔子。",
+      "C. 您之後加了猴子圖像重訓。",
+      "D. 用更多不同光線的貓狗照片重訓。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n當實際環境中輸入的資料類型（如老虎、猴子）超出了原先訓練集（貓、狗、兔子）的範疇，導致模型表現大幅下滑，此現象即為模型漂移。"
+  },
+  {
+    id: 47,
+    q: "部署新推薦演算法後，該如何客觀評估新演算法是否能比舊演算法實現更高的業務效益?",
+    type: "single",
+    options: [
+      "A. 進行 A/B 測試（例如同時向不同用戶群推薦）或比對相同時間維度的銷售轉化率。",
+      "B. 檢閱資料科學家的實驗，確認他們在相同測試案例上評估。",
+      "C. 檢視程式碼看哪邊錯誤多。",
+      "D. 拿最忙碌日與普通第一天比。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n在生產環境中最標準的做法是透過 A/B 測試，在控制變數的情況下比較新舊演算法對業務指標（如銷售量、點擊率）的實際影響。"
+  },
+  {
+    id: 48,
+    q: "新 AI 系統順利通過測試並收集實際指標。在全面部署前，應採取什麼重要且合乎道德（Ethical）的步驟?",
+    type: "single",
+    options: [
+      "A. 判斷這項技術是否會對任何族群造成不相稱的影響（偏見與不公）。",
+      "B. 審查新技術是否可升級。",
+      "C. 接受預購訂單。",
+      "D. 保留伺服器備用。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n負責任的 AI（Responsible AI）要求在全面上線前進行倫理審查，確認系統不會對少數或特定族群產生歧視或不相稱的負面影響。"
+  },
+  {
+    id: 49,
+    q: "歌曲推薦 AI 讓使用者點擊『很棒』或『很糟』。接收使用者回饋意見有哪三項優點?（請選擇 3 個答案）",
+    type: "multiple",
+    options: [
+      "A. 對推薦演算法的不同版本進行有效的 A/B 測試。",
+      "B. 瞭解使用者對這套系統的滿意度。",
+      "C. 獲得重新訓練與優化模型的標記資料。",
+      "D. 輕易取得私人個資。",
+      "E. 縮減模型檔案大小。"
+    ],
+    ans: ["A", "B", "C"],
+    exp: "【正確答案：A, B, C】\n使用者回饋能評估系統滿意度 (B)、作為 A/B 測試的成效指標 (A)，並轉化為後續模型再訓練的優質監督資料 (C)。"
+  },
+  {
+    id: 50,
+    q: "雜貨店網站使用 AI 推薦產品已數個月。決定是否要繼續使用這個 AI 時，商店應考慮下列哪項業務因素?",
+    type: "single",
+    options: [
+      "A. AI 的推薦是否使顧客的實際採購量/營業額增加。",
+      "B. AI 原始準確度是否超過 85%。",
+      "C. AI 是監督式還是非監督式。",
+      "D. AI 是否使用了可解釋演算法。"
+    ],
+    ans: ["A"],
+    exp: "【正確答案：A】\n商業 AI 系統的終極存廢標準在於其「是否帶來實質商業價值（例如促進採購量與營收成長）」。"
+  }
+];
+
+function renderQuiz() {
+  const container = document.getElementById('questionsContainer');
+  container.innerHTML = '';
+
+  quizData.forEach((q, index) => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = `card-${q.id}`;
+
+    let inputType = q.type === 'single' ? 'radio' : 'checkbox';
+
+    let optionsHTML = q.options.map((opt, i) => {
+      let value = opt.substring(0, 1);
+      return `
+        <label class="option-label">
+          <input type="${inputType}" name="q_${q.id}" value="${value}">
+          <span>${opt}</span>
+        </label>
+      `;
+    }).join('');
+
+    card.innerHTML = `
+      <div class="q-number">第 ${q.id} 題 ${q.type === 'multiple' ? '【多選題】' : '【單選題】'}</div>
+      <div class="q-text">${q.q}</div>
+      <div class="options">${optionsHTML}</div>
+      <div class="explanation" id="exp-${q.id}">
+        <div class="exp-title" id="exp-title-${q.id}"></div>
+        <div style="white-space: pre-line;">${q.exp}</div>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+function submitQuiz() {
+  let score = 0;
+  let correctCount = 0;
+
+  quizData.forEach(q => {
+    const selectedInputs = document.querySelectorAll(`input[name="q_${q.id}"]:checked`);
+    const userAns = Array.from(selectedInputs).map(i => i.value).sort();
+    const correctAns = [...q.ans].sort();
+
+    const isCorrect = JSON.stringify(userAns) === JSON.stringify(correctAns);
+
+    const expDiv = document.getElementById(`exp-${q.id}`);
+    const expTitle = document.getElementById(`exp-title-${q.id}`);
+    const card = document.getElementById(`card-${q.id}`);
+
+    expDiv.style.display = 'block';
+
+    if (isCorrect) {
+      score += 2; // 50題，每題2分，滿分100分
+      correctCount++;
+      expDiv.className = 'explanation correct';
+      expTitle.innerHTML = `<span class="correct-ans">✓ 回答正確！</span> (正確答案：${q.ans.join(', ')})`;
+      card.style.borderColor = 'var(--success)';
+    } else {
+      expDiv.className = 'explanation incorrect';
+      expTitle.innerHTML = `<span class="wrong-ans">✗ 回答錯誤！</span> (你的回答：${userAns.join(', ') || '未作答'} | 正確答案：${q.ans.join(', ')})`;
+      card.style.borderColor = 'var(--error)';
+    }
+  });
+
+  // 顯示分數區塊
+  const scoreBoard = document.getElementById('scoreBoard');
+  const scoreText = document.getElementById('scoreText');
+  const scoreSummary = document.getElementById('scoreSummary');
+
+  scoreText.innerText = `${score} / 100 分`;
+  scoreSummary.innerText = `共 50 題，答對 ${correctCount} 題，答錯 ${50 - correctCount} 題。往下滑動可檢視各題詳細解析！`;
+  scoreBoard.style.display = 'block';
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+window.onload = renderQuiz;
+</script>
+</body>
+</html>
