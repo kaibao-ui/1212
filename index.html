@@ -855,7 +855,7 @@ function submitQuiz() {
   const scoreSummary = document.getElementById('scoreSummary');
 
   scoreText.innerText = `${score} / 100 分`;
-  scoreSummary.innerText = `共 50 題，答對 ${correctCount} 題，答錯 ${50 - correctCount} 題。往下滑動可檢視各題詳細解析！`;
+  scoreSummary.innerText = `共 50 題，你答對了 ${correctCount} 題，答錯 ${50 - correctCount} 題。往下滑動可檢視各題詳細解析！`;
   scoreBoard.style.display = 'block';
 
   window.scrollTo({ top: 0, behavior: 'smooth' });
